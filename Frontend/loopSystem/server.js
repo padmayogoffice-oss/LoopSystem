@@ -3,7 +3,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,11 +14,12 @@ console.log("DIST PATH:", distPath);
 // Serve static files
 app.use(express.static(distPath));
 
-// ✅ FINAL FIX
+// Fallback
 app.use((req, res) => {
   res.sendFile("index.html", { root: distPath });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Frontend running on port ${PORT}`);
+// ✅ CRITICAL FIX HERE
+app.listen(process.env.PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${process.env.PORT}`);
 });
