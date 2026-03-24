@@ -11,8 +11,8 @@ const __dirname = path.dirname(__filename);
 // Serve static files
 app.use(express.static(path.join(__dirname, "dist")));
 
-// Handle React routing
-app.get("/*", (req, res) => {
+// ✅ Express 5 wildcard FIX
+app.get("/:path(*)", (req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
