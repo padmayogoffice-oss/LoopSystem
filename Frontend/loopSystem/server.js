@@ -13,8 +13,8 @@ const distPath = path.join(__dirname, "dist");
 // Serve static files
 app.use(express.static(distPath));
 
-// React routing fix (IMPORTANT)
-app.get("*", (req, res) => {
+// FIXED for Express 5
+app.get("/*", (req, res) => {
   res.sendFile(path.join(distPath, "index.html"));
 });
 
