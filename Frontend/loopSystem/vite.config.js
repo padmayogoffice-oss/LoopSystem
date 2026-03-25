@@ -6,11 +6,11 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: false,
-    emptyOutDir: true, // Force empty the output directory before building
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: undefined,
-        entryFileNames: `assets/index-[hash].js`, // Ensure new hash on each build
+        entryFileNames: `assets/index-[hash].js`,
         chunkFileNames: `assets/[name]-[hash].js`,
         assetFileNames: `assets/[name]-[hash].[ext]`,
       },

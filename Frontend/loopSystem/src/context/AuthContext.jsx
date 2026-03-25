@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext } from "react";
-import axios from "axios";
+import api from "../api"; // Import the configured axios instance
 import { toast } from "react-toastify";
 
 const AuthContext = createContext();
@@ -14,13 +14,11 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const response = await axios.post(
-        "http://localhost:3000/api/mail/login",
-        {
-          email,
-          password,
-        },
-      );
+      // Use the configured api instance instead of direct axios
+      const response = await api.post("/api/mail/login", {
+        email,
+        password,
+      });
 
       if (response.data.success) {
         localStorage.setItem("token", response.data.token);
@@ -28,8 +26,12 @@ export const AuthProvider = ({ children }) => {
         setUser({ email });
         toast.success("Login successful!");
         return true;
+      } else {
+        toast.error(response.data.message || "Login failed");
+        return false;
       }
     } catch (error) {
+      console.error("Login error:", error);
       toast.error(error.response?.data?.message || "Login failed");
       return false;
     } finally {

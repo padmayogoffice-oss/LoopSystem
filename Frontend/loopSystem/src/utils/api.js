@@ -1,15 +1,14 @@
 import axios from "axios";
 
-// Use environment variable for API URL
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "https://loopsystem-production.up.railway.app";
+// Use the deployed backend URL
+const API_URL = "https://loopsystem-production.up.railway.app";
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 10000, // 10 second timeout
 });
 
 // Add token to requests
@@ -22,6 +21,18 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  },
+);
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
     return Promise.reject(error);
   },
 );
