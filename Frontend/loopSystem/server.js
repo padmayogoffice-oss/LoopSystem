@@ -35,10 +35,8 @@ app.use((req, res, next) => {
 // Serve static files FIRST
 app.use(express.static(distPath));
 
-// Handle all routes - THIS IS THE CORRECT WAY FOR EXPRESS 5
-// NO app.get("*") - use middleware instead
+// Handle all routes - THIS IS THE CORRECT WAY FOR EXPRESS
 app.use((req, res) => {
-  // Skip if the request is for a file that exists
   if (req.method !== "GET") {
     return res.status(404).json({ error: "Not found" });
   }
