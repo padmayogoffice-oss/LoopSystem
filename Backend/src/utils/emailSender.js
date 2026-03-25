@@ -16,20 +16,14 @@ console.log(
 // Use port 587 with STARTTLS (more compatible with cloud providers)
 const transporter = nodemailer.createTransport({
   host: "smtp.zoho.in",
-  port: 587,
-  secure: false, // false for port 587
+  port: 465,
+  secure: true, // IMPORTANT: true for 465
   auth: {
     user: process.env.ZOHO_USER,
     pass: process.env.ZOHO_APP_PASSWORD,
   },
-  tls: {
-    rejectUnauthorized: false,
-    ciphers: "SSLv3",
-  },
-  connectionTimeout: 30000,
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
-  debug: true, // Enable debug for troubleshooting
+  connectionTimeout: 60000,
+  socketTimeout: 60000,
 });
 
 // Verify transporter connection
