@@ -58,70 +58,196 @@ export const sendLoopingMails = async (req, res) => {
       process.env.ZOHO_USER || process.env.EMAIL_USER || "noreply@loopmail.com";
     const currentDate = new Date();
     const formattedDate = currentDate.toLocaleString("en-US", {
+      weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      second: "2-digit",
       hour12: true,
     });
 
-    // Create simple HTML email template
+    // Create professional HTML email template with sender information
     const htmlContent = `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
         <style>
-          body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
+          * {
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            box-sizing: border-box;
           }
+          
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background-color: #f4f4f4;
+          }
+          
           .email-container {
-            max-width: 600px;
+            max-width: 650px;
             margin: 0 auto;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
           }
+          
+          .email-header {
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+            padding: 30px 20px;
+            text-align: center;
+            color: white;
+          }
+          
+          .email-header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: 600;
+          }
+          
+          .email-header p {
+            font-size: 14px;
+            opacity: 0.9;
+          }
+          
+          .email-body {
+            padding: 40px 30px;
+            background-color: #ffffff;
+          }
+          
+          .email-footer {
+            padding: 20px 30px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
+          }
+          
           .sender-info {
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 4px solid #4F46E5;
           }
+          
           .sender-info p {
             margin: 5px 0;
             font-size: 14px;
           }
-          .subject {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #444;
+          
+          .sender-label {
+            font-weight: 600;
+            color: #4F46E5;
+            min-width: 70px;
+            display: inline-block;
           }
-          .content {
-            margin-bottom: 20px;
+          
+          .email-subject {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+          }
+          
+          .email-content {
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            line-height: 1.8;
+          }
+          
+          .email-content p {
+            margin-bottom: 15px;
+          }
+          
+          .meta-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 25px;
+            font-size: 13px;
+            color: #6c757d;
+          }
+          
+          .meta-info span {
+            font-weight: 600;
+            color: #4F46E5;
+          }
+          
+          .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4F46E5;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-size: 14px;
+          }
+          
+          @media only screen and (max-width: 600px) {
+            .email-body {
+              padding: 25px 20px;
+            }
+            .email-subject {
+              font-size: 20px;
+            }
           }
         </style>
       </head>
-      <body>
+      <body style="margin: 0; padding: 20px; background-color: #f4f4f4;">
         <div class="email-container">
-          <div class="sender-info">
-            <p><strong>From:</strong> ${senderEmail}</p>
-            <p><strong>To:</strong> ${to}</p>
-            <p><strong>Date:</strong> ${formattedDate}</p>
+          <!-- Header Section -->
+          <div class="email-header">
+            <h1>Looping Mail System</h1>
+            <p>Automated Email Delivery Service</p>
           </div>
           
-          <div class="subject">
-            ${subject}
+          <!-- Body Section -->
+          <div class="email-body">
+            <!-- Sender Information -->
+            <div class="sender-info">
+              <p><span class="sender-label">From:</span> ${senderEmail}</p>
+              <p><span class="sender-label">To:</span> ${to}</p>
+              <p><span class="sender-label">Date:</span> ${formattedDate}</p>
+            </div>
+            
+            <!-- Subject -->
+            <div class="email-subject">
+              ${subject}
+            </div>
+            
+            <!-- Email Content -->
+            <div class="email-content">
+              ${content.replace(/\n/g, "<br>").replace(/ /g, " ")}
+            </div>
+            
+            <!-- Meta Information -->
+            <div class="meta-info">
+              <p><span>📧 Message ID:</span> ${Date.now()}-${Math.random().toString(36).substr(2, 9)}</p>
+              <p><span>🔄 Loop Number:</span> This is an automated loop email</p>
+              <p><span>⏰ Sent at:</span> ${formattedDate}</p>
+            </div>
           </div>
           
-          <div class="content">
-            ${content.replace(/\n/g, "<br>")}
+          <!-- Footer Section -->
+          <div class="email-footer">
+            <p>This is an automated email sent from Looping Mail System</p>
+            <p>© ${new Date().getFullYear()} Looping Mail System. All rights reserved.</p>
+            <p style="margin-top: 10px; font-size: 11px;">
+              This is a system-generated email. Please do not reply to this message.
+            </p>
           </div>
         </div>
       </body>
