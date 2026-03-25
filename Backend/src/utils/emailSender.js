@@ -1,8 +1,13 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // Load environment variables
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 console.log("📧 Email Configuration Check:");
 console.log("ZOHO_USER:", process.env.ZOHO_USER ? "✓ Set" : "✗ Missing");
@@ -22,13 +27,6 @@ const transporter = nodemailer.createTransport({
     user: process.env.ZOHO_USER,
     pass: process.env.ZOHO_APP_PASSWORD,
   },
-  tls: {
-    rejectUnauthorized: false,
-  },
-  connectionTimeout: 30000,
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
-  debug: true, // Enable debug for troubleshooting
 });
 
 // Verify transporter connection
