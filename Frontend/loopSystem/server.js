@@ -12,27 +12,35 @@ const distPath = path.join(__dirname, "dist");
 console.log("DIST PATH:", distPath);
 console.log("PORT FROM ENV:", process.env.PORT);
 
+// IMPORTANT: Make sure dist directory exists
+import fs from "fs";
+if (!fs.existsSync(distPath)) {
+  console.error("ERROR: dist directory not found! Build may have failed.");
+  process.exit(1);
+}
+
 // Serve static files
 app.use(express.static(distPath));
 
-// Handle API routes - redirect to backend service
-// You'll need to set BACKEND_URL in Railway environment variables
-app.use("/api", (req, res) => {
-  // Redirect to your actual backend URL
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3000";
-  const fullUrl = `${backendUrl}${req.originalUrl}`;
-
-  // For a simple redirect (but this won't work for POST requests)
-  // Better to use fetch or http-proxy-middleware
-  res.redirect(fullUrl);
+// IMPORTANT: Handle all routes by serving index.html for client-side routing
+// This must be the LAST route
+app.get("*", (req, res) => {
+  console.log(`Serving index.html for path: ${req.path}`);
+  res.sendFile(path.join(distPath, "index.html"));
 });
 
-// Fallback for all other routes
-app.use((req, res) => {
-  res.sendFile("index.html", { root: distPath });
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
+  res.status(500).send("Internal Server Error");
 });
 
-// Start server
-app.listen(process.env.PORT || 3000, "0.0.0.0", () => {
-  console.log(`Server running on port ${process.env.PORT}`);
+// Get PORT from environment or use 3000 as fallback
+const PORT = process.env.PORT || 3000;
+
+// Listen on all network interfaces (0.0.0.0) - CRITICAL for Railway
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Serving files from: ${distPath}`);
+  console.log(`✅ Environment: ${process.env.NODE_ENV || "development"}`);
 });
