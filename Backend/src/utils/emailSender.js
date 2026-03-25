@@ -7,8 +7,8 @@ dotenv.config();
 // Create transporter with Zoho SMTP configuration
 const transporter = nodemailer.createTransport({
   host: "smtp.zoho.in",
-  port: 587,
-  secure: false, // true for 465, false for other ports
+  port: 465, // Use 465 for SSL
+  secure: true, // true for 465, false for other ports
   auth: {
     user: process.env.ZOHO_USER,
     pass: process.env.ZOHO_APP_PASSWORD,
@@ -16,15 +16,19 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
+  connectionTimeout: 30000, // 30 seconds timeout
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
 });
 
 // Verify transporter connection
 transporter.verify((error, success) => {
   if (error) {
-    console.error("Zoho Email transporter error:", error);
+    console.error("Zoho Email transporter error:", error.message);
+    console.error("Error details:", error);
   } else {
-    console.log("Zoho Email server is ready to send messages");
-    console.log(`Email account: ${process.env.ZOHO_USER}`);
+    console.log("✅ Zoho Email server is ready to send messages");
+    console.log(`📧 Email account: ${process.env.ZOHO_USER}`);
   }
 });
 
@@ -33,7 +37,7 @@ export const sendEmail = async (to, subject, html, attachments = []) => {
   try {
     const mailOptions = {
       from: `"Looping Mail System" <${process.env.ZOHO_USER}>`,
-      to: to, // Recipient email from frontend
+      to: to,
       subject: subject,
       html: html,
       attachments: attachments.map((file) => ({
@@ -44,13 +48,14 @@ export const sendEmail = async (to, subject, html, attachments = []) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Email sent to ${to}, Message ID: ${info.messageId}`);
     return {
       success: true,
       messageId: info.messageId,
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
-    console.error("Email sending error:", error);
+    console.error("❌ Email sending error:", error.message);
     throw new Error(`Failed to send email: ${error.message}`);
   }
 };
@@ -106,18 +111,18 @@ export const scheduleEmails = (
       const result = await sendEmail(to, subject, html, attachments);
       sentCount++;
       console.log(
-        `Email ${sentCount}/${count} sent to ${to} at ${new Date().toISOString()}`,
+        `📧 Email ${sentCount}/${count} sent to ${to} at ${new Date().toISOString()}`,
       );
 
       if (sentCount === parseInt(count)) {
-        console.log(`All ${count} emails sent successfully to ${to}`);
+        console.log(`✅ All ${count} emails sent successfully to ${to}`);
         if (activeIntervals.has(intervalId)) {
           clearInterval(activeIntervals.get(intervalId));
           activeIntervals.delete(intervalId);
         }
       }
     } catch (error) {
-      console.error(`Error sending email ${sentCount + 1}:`, error);
+      console.error(`❌ Error sending email ${sentCount + 1}:`, error.message);
       isCancelled = true;
       if (activeIntervals.has(intervalId)) {
         clearInterval(activeIntervals.get(intervalId));
