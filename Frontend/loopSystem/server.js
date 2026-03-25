@@ -26,15 +26,30 @@ if (!fs.existsSync(indexPath)) {
   process.exit(1);
 }
 
+// Add a health check endpoint
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    distExists: true,
+    indexPath: indexPath,
+  });
+});
+
+// Explicitly handle root path
+app.get("/", (req, res) => {
+  console.log("Serving root path");
+  res.sendFile(indexPath);
+});
+
 // Serve static files
 app.use(express.static(distPath));
 
-// For Express 5, use this syntax for wildcard routes
-// This handles all routes by serving index.html (for client-side routing)
-app.use((req, res, next) => {
-  // Skip API routes - if you have any API endpoints
+// Handle all other routes for client-side routing
+app.get("*", (req, res) => {
+  // Skip API routes if you have any
   if (req.path.startsWith("/api")) {
-    return next();
+    return res.status(404).json({ error: "API endpoint not found" });
   }
 
   console.log(`Serving index.html for path: ${req.path}`);
@@ -55,5 +70,5 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`✅ Serving files from: ${distPath}`);
   console.log(`✅ Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`✅ Health check: http://localhost:${PORT}/`);
+  console.log(`✅ Health check: http://localhost:${PORT}/health`);
 });
