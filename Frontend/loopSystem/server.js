@@ -26,49 +26,36 @@ if (!fs.existsSync(indexPath)) {
   process.exit(1);
 }
 
-// Add a health check endpoint
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    distExists: true,
-    indexPath: indexPath,
-  });
+// Log all requests for debugging
+app.use((req, res, next) => {
+  console.log(`📨 ${req.method} ${req.url}`);
+  next();
 });
 
-// Explicitly handle root path
-app.get("/", (req, res) => {
-  console.log("Serving root path");
-  res.sendFile(indexPath);
-});
-
-// Serve static files
+// Serve static files FIRST
 app.use(express.static(distPath));
 
-// Handle all other routes for client-side routing
-app.get("*", (req, res) => {
-  // Skip API routes if you have any
-  if (req.path.startsWith("/api")) {
-    return res.status(404).json({ error: "API endpoint not found" });
+// Handle all routes - THIS IS THE CORRECT WAY FOR EXPRESS 5
+// NO app.get("*") - use middleware instead
+app.use((req, res) => {
+  // Skip if the request is for a file that exists
+  if (req.method !== "GET") {
+    return res.status(404).json({ error: "Not found" });
   }
 
-  console.log(`Serving index.html for path: ${req.path}`);
+  console.log(`Serving index.html for: ${req.url}`);
   res.sendFile(indexPath);
 });
 
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
   console.error("Server error:", err);
   res.status(500).send("Internal Server Error");
 });
 
-// Get PORT from environment or use 3000 as fallback
 const PORT = process.env.PORT || 3000;
 
-// Listen on all network interfaces
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`✅ Serving files from: ${distPath}`);
-  console.log(`✅ Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`✅ Health check: http://localhost:${PORT}/health`);
+  console.log(`✅ Serving from: ${distPath}`);
 });
