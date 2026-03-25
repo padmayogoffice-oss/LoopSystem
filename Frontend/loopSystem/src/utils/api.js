@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// Use the deployed backend URL
-const API_URL = "https://loopsystem-production.up.railway.app/api";
+// Use the deployed backend URL (no /api at the end)
+const API_URL = "https://loopsystem-production.up.railway.app";
 
 const api = axios.create({
   baseURL: API_URL,
