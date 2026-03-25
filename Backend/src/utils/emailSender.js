@@ -12,11 +12,11 @@ console.log(
   process.env.ZOHO_APP_PASSWORD ? "✓ Set" : "✗ Missing",
 );
 
-// Create transporter with Zoho SMTP configuration
+// Replace the transporter configuration in emailSender.js with:
 const transporter = nodemailer.createTransport({
-  host: "smtp.zoho.in",
-  port: 465, // Using 465 for SSL instead of 587
-  secure: true, // true for 465, false for other ports
+  host: "smtp.zoho.com", // Use .com instead of .in
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.ZOHO_USER,
     pass: process.env.ZOHO_APP_PASSWORD,
@@ -24,8 +24,9 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
-  debug: true, // Enable debug output
-  logger: true, // Enable logger
+  connectionTimeout: 30000,
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
 });
 
 // Verify transporter connection
