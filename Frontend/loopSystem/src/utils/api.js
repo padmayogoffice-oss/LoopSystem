@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_URL = "https://loopsystem-production.up.railway.app/api";
+// Use relative URL for API calls since frontend and backend are on same domain
+const API_URL = "/api";
 
 const api = axios.create({
   baseURL: API_URL,
