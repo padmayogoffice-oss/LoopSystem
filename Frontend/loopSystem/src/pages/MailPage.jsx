@@ -56,7 +56,7 @@ const MailPage = () => {
     });
 
     try {
-      const response = await api.post("/mail/send-loop", formData, {
+      const response = await api.post("/api/mail/send-loop", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
