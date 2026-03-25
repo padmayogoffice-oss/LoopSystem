@@ -4,33 +4,79 @@ import dotenv from "dotenv";
 // Load environment variables
 dotenv.config();
 
-// Create transporter with Zoho SMTP configuration
-const transporter = nodemailer.createTransport({
-  host: "smtp.zoho.in",
-  port: 465, // Use 465 for SSL
-  secure: true, // true for 465, false for other ports
-  auth: {
-    user: process.env.ZOHO_USER,
-    pass: process.env.ZOHO_APP_PASSWORD,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-  connectionTimeout: 30000, // 30 seconds timeout
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
+// Try different Zoho SMTP configurations
+const getTransporterConfig = () => {
+  // Option 1: Standard Zoho SMTP (port 587 with TLS)
+  const configs = [
+    {
+      host: "smtp.zoho.in",
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.ZOHO_USER,
+        pass: process.env.ZOHO_APP_PASSWORD,
+      },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 30000,
+    },
+    {
+      host: "smtp.zoho.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.ZOHO_USER,
+        pass: process.env.ZOHO_APP_PASSWORD,
+      },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 30000,
+    },
+    {
+      host: "smtp.zoho.in",
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.ZOHO_USER,
+        pass: process.env.ZOHO_APP_PASSWORD,
+      },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 30000,
+    },
+  ];
+
+  return configs[0]; // Try first config
+};
+
+// Create transporter
+const transporterConfig = getTransporterConfig();
+console.log("📧 Attempting Zoho SMTP connection with:", {
+  host: transporterConfig.host,
+  port: transporterConfig.port,
+  secure: transporterConfig.secure,
+  user: process.env.ZOHO_USER,
 });
 
-// Verify transporter connection
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("Zoho Email transporter error:", error.message);
-    console.error("Error details:", error);
-  } else {
+const transporter = nodemailer.createTransport(transporterConfig);
+
+// Test the connection
+const testConnection = async () => {
+  try {
+    await transporter.verify();
     console.log("✅ Zoho Email server is ready to send messages");
     console.log(`📧 Email account: ${process.env.ZOHO_USER}`);
+    return true;
+  } catch (error) {
+    console.error("❌ Zoho Email transporter error:", error.message);
+    console.log("💡 Troubleshooting tips:");
+    console.log("   1. Check if Zoho account has 2FA enabled");
+    console.log("   2. Generate an App Password from Zoho Security settings");
+    console.log("   3. Use the App Password, not your regular password");
+    console.log("   4. Ensure your Zoho account is active and not blocked");
+    return false;
   }
-});
+};
+
+// Test connection on startup
+testConnection();
 
 // Send single email
 export const sendEmail = async (to, subject, html, attachments = []) => {
@@ -77,7 +123,7 @@ const convertToMs = (value, unit) => {
   }
 };
 
-// Store active intervals to potentially cancel them
+// Store active intervals
 const activeIntervals = new Map();
 
 // Schedule multiple emails
@@ -94,7 +140,6 @@ export const scheduleEmails = (
   let sentCount = 0;
   let isCancelled = false;
 
-  // Convert time to milliseconds
   const timeInMs = convertToMs(timeValue, timeUnit);
   const intervalId = Date.now().toString();
 
@@ -131,11 +176,8 @@ export const scheduleEmails = (
     }
   };
 
-  // Start sending emails
   const interval = setInterval(sendNextEmail, timeInMs);
   activeIntervals.set(intervalId, interval);
-
-  // Send first email immediately
   setTimeout(sendNextEmail, 0);
 
   return {
@@ -147,7 +189,7 @@ export const scheduleEmails = (
   };
 };
 
-// Cancel all active email schedules (optional utility)
+// Cancel all active email schedules
 export const cancelAllSchedules = () => {
   for (const [id, interval] of activeIntervals) {
     clearInterval(interval);
