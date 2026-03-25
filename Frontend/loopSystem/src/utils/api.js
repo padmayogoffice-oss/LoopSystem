@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// Use environment variable for API URL, fallback to relative path
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+// Use the deployed backend URL
+const API_URL = "https://loopsystem-production.up.railway.app/api";
 
 const api = axios.create({
   baseURL: API_URL,
