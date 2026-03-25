@@ -56,7 +56,8 @@ const MailPage = () => {
     });
 
     try {
-      const response = await api.post("/api/mail/send-loop", formData, {
+      // The correct endpoint - api baseURL already has /api
+      const response = await api.post("/mail/send-loop", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -71,7 +72,13 @@ const MailPage = () => {
       setAttachments([]);
       setTimeValue("1");
       setCount("1");
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     } catch (error) {
+      console.error("Send error:", error);
       toast.error(error.response?.data?.message || "Error sending emails");
     } finally {
       setSending(false);
@@ -112,7 +119,7 @@ const MailPage = () => {
                 type="email"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
-                className="input-field"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="recipient@example.com"
                 required
               />
@@ -127,7 +134,7 @@ const MailPage = () => {
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="input-field"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Email subject"
                 required
               />
@@ -142,7 +149,7 @@ const MailPage = () => {
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows="8"
-                className="input-field"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Write your email here..."
                 required
               />
@@ -211,7 +218,7 @@ const MailPage = () => {
               <button
                 type="submit"
                 disabled={sending}
-                className="btn-primary flex items-center disabled:opacity-50"
+                className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 <FiSend className="mr-2" />
                 {sending ? "Sending..." : "Send Loop Emails"}
