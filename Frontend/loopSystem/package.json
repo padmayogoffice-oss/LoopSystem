@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node -e \"console.log('Building at:', new Date().toISOString())\" && vite build",
+       "build": "node -e \"console.log('VITE_API_URL:', process.env.VITE_API_URL)\" && node -e \"console.log('Building at:', new Date().toISOString())\" && vite build",
     "preview": "vite preview",
     "start": "node server.js"
   },
