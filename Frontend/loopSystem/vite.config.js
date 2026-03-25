@@ -6,13 +6,23 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: false,
+    emptyOutDir: true, // Force empty the output directory before building
     rollupOptions: {
       output: {
         manualChunks: undefined,
+        entryFileNames: `assets/index-[hash].js`, // Ensure new hash on each build
+        chunkFileNames: `assets/[name]-[hash].js`,
+        assetFileNames: `assets/[name]-[hash].[ext]`,
       },
     },
   },
   server: {
     port: 3000,
+  },
+  define: {
+    "import.meta.env.VITE_API_URL": JSON.stringify(
+      process.env.VITE_API_URL ||
+        "https://loopsystem-production.up.railway.app",
+    ),
   },
 });
