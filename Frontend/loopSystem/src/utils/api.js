@@ -1,14 +1,14 @@
 import axios from "axios";
 
-// Use the deployed backend URL
-const API_URL = "https://loopsystem-production.up.railway.app";
+// Use the deployed backend URL with /api prefix
+const API_URL = "https://loopsystem-production.up.railway.app/api";
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000, // 10 second timeout
+  timeout: 10000,
 });
 
 // Add token to requests

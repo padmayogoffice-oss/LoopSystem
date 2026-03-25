@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext } from "react";
-import api from "../utils/api"; // Import the configured axios instance
+import api from "../api";
 import { toast } from "react-toastify";
 
 const AuthContext = createContext();
@@ -14,8 +14,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      // Use the configured api instance instead of direct axios
-      const response = await api.post("/api/mail/login", {
+      // Now using api with /api prefix, so endpoint is /mail/login
+      const response = await api.post("/mail/login", {
         email,
         password,
       });
