@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext } from "react";
-import api from "../api";
+import api from "../utils/api"; // This should now work if api.js is in src/
 import { toast } from "react-toastify";
 
 const AuthContext = createContext();
@@ -14,7 +14,6 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      // Now using api with /api prefix, so endpoint is /mail/login
       const response = await api.post("/mail/login", {
         email,
         password,
