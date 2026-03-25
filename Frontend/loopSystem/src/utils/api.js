@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// Use relative URL for API calls since frontend and backend are on same domain
-const API_URL = "https://sunny-learning-production-9995.up.railway.app/api";
+// Use environment variable for API URL, fallback to relative path
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 const api = axios.create({
   baseURL: API_URL,
