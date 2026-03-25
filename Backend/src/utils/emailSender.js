@@ -4,83 +4,56 @@ import dotenv from "dotenv";
 // Load environment variables
 dotenv.config();
 
-// Try different Zoho SMTP configurations
-const getTransporterConfig = () => {
-  // Option 1: Standard Zoho SMTP (port 587 with TLS)
-  const configs = [
-    {
-      host: "smtp.zoho.in",
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.ZOHO_USER,
-        pass: process.env.ZOHO_APP_PASSWORD,
-      },
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 30000,
-    },
-    {
-      host: "smtp.zoho.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.ZOHO_USER,
-        pass: process.env.ZOHO_APP_PASSWORD,
-      },
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 30000,
-    },
-    {
-      host: "smtp.zoho.in",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.ZOHO_USER,
-        pass: process.env.ZOHO_APP_PASSWORD,
-      },
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 30000,
-    },
-  ];
+console.log("📧 Email Configuration Check:");
+console.log("ZOHO_USER:", process.env.ZOHO_USER ? "✓ Set" : "✗ Missing");
+console.log(
+  "ZOHO_APP_PASSWORD:",
+  process.env.ZOHO_APP_PASSWORD
+    ? `✓ Set (${process.env.ZOHO_APP_PASSWORD.length} chars)`
+    : "✗ Missing",
+);
 
-  return configs[0]; // Try first config
-};
-
-// Create transporter
-const transporterConfig = getTransporterConfig();
-console.log("📧 Attempting Zoho SMTP connection with:", {
-  host: transporterConfig.host,
-  port: transporterConfig.port,
-  secure: transporterConfig.secure,
-  user: process.env.ZOHO_USER,
+// Create transporter with Zoho SMTP configuration
+const transporter = nodemailer.createTransport({
+  host: "smtp.zoho.in",
+  port: 465,
+  secure: true, // Use SSL
+  auth: {
+    user: process.env.ZOHO_USER,
+    pass: process.env.ZOHO_APP_PASSWORD,
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+  connectionTimeout: 30000,
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
+  debug: true, // Enable debug for troubleshooting
 });
 
-const transporter = nodemailer.createTransport(transporterConfig);
-
-// Test the connection
-const testConnection = async () => {
-  try {
-    await transporter.verify();
+// Verify transporter connection
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ Zoho Email transporter error:", error.message);
+    console.error("Error details:", {
+      code: error.code,
+      command: error.command,
+      user: process.env.ZOHO_USER,
+    });
+  } else {
     console.log("✅ Zoho Email server is ready to send messages");
     console.log(`📧 Email account: ${process.env.ZOHO_USER}`);
-    return true;
-  } catch (error) {
-    console.error("❌ Zoho Email transporter error:", error.message);
-    console.log("💡 Troubleshooting tips:");
-    console.log("   1. Check if Zoho account has 2FA enabled");
-    console.log("   2. Generate an App Password from Zoho Security settings");
-    console.log("   3. Use the App Password, not your regular password");
-    console.log("   4. Ensure your Zoho account is active and not blocked");
-    return false;
   }
-};
+});
 
-// Test connection on startup
-testConnection();
-
-// Send single email
+// Send single email with better error handling and delivery options
 export const sendEmail = async (to, subject, html, attachments = []) => {
   try {
+    // Validate email addresses
+    if (!to || !to.includes("@")) {
+      throw new Error(`Invalid recipient email: ${to}`);
+    }
+
     const mailOptions = {
       from: `"Looping Mail System" <${process.env.ZOHO_USER}>`,
       to: to,
@@ -91,18 +64,54 @@ export const sendEmail = async (to, subject, html, attachments = []) => {
         content: file.buffer,
         contentType: file.mimetype,
       })),
+      // Add headers to improve deliverability
+      headers: {
+        "X-Priority": "3",
+        "X-Mailer": "Looping Mail System",
+        "X-Auto-Response-Suppress": "OOF, AutoReply",
+      },
+      // Add priority to avoid spam filters
+      priority: "normal",
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent to ${to}, Message ID: ${info.messageId}`);
+    console.log(`✅ Email sent successfully to ${to}`);
+    console.log(`   Message ID: ${info.messageId}`);
+    console.log(`   Response: ${info.response}`);
+
     return {
       success: true,
       messageId: info.messageId,
       timestamp: new Date().toISOString(),
+      response: info.response,
     };
   } catch (error) {
-    console.error("❌ Email sending error:", error.message);
+    console.error(`❌ Failed to send email to ${to}:`, error.message);
+    console.error(`   Error code: ${error.code}`);
+    console.error(`   Command: ${error.command}`);
+
+    // Check for specific error types
+    if (error.code === "EAUTH") {
+      console.error("   Authentication failed. Check your Zoho credentials.");
+    } else if (error.code === "ECONNECTION") {
+      console.error("   Connection failed. Check network and SMTP settings.");
+    } else if (error.responseCode === 550) {
+      console.error("   Email rejected by recipient server.");
+    }
+
     throw new Error(`Failed to send email: ${error.message}`);
+  }
+};
+
+// Test email function to verify configuration
+export const testEmailConnection = async () => {
+  try {
+    await transporter.verify();
+    console.log("✅ Email connection test passed");
+    return true;
+  } catch (error) {
+    console.error("❌ Email connection test failed:", error.message);
+    return false;
   }
 };
 
@@ -158,6 +167,7 @@ export const scheduleEmails = (
       console.log(
         `📧 Email ${sentCount}/${count} sent to ${to} at ${new Date().toISOString()}`,
       );
+      console.log(`   Message ID: ${result.messageId}`);
 
       if (sentCount === parseInt(count)) {
         console.log(`✅ All ${count} emails sent successfully to ${to}`);
@@ -178,6 +188,8 @@ export const scheduleEmails = (
 
   const interval = setInterval(sendNextEmail, timeInMs);
   activeIntervals.set(intervalId, interval);
+
+  // Send first email immediately
   setTimeout(sendNextEmail, 0);
 
   return {
@@ -195,5 +207,6 @@ export const cancelAllSchedules = () => {
     clearInterval(interval);
     activeIntervals.delete(id);
   }
+  console.log(`✅ Cancelled ${activeIntervals.size} active schedules`);
   return { cancelled: activeIntervals.size };
 };
