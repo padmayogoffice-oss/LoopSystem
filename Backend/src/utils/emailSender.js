@@ -1,4 +1,4 @@
-import axios from "axios";
+import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
 // Load environment variables
@@ -12,68 +12,102 @@ console.log(
   process.env.ZOHO_APP_PASSWORD ? "✓ Set" : "✗ Missing",
 );
 
-// Zoho Mail API Configuration
-const ZOHO_API_URL = "https://mail.zoho.com/api/accounts";
-const ZOHO_ACCOUNT_ID = process.env.ZOHO_USER; // Your email
+// Try multiple ports that might be allowed on cloud platforms
+const smtpPorts = [25, 587, 465, 2525, 8025];
+let activeTransporter = null;
+let workingPort = null;
 
-// Generate auth token (Basic Auth with app password)
-const authToken = Buffer.from(
-  `${process.env.ZOHO_USER}:${process.env.ZOHO_APP_PASSWORD}`,
-).toString("base64");
+// Function to test different SMTP ports
+const getWorkingTransporter = async () => {
+  if (activeTransporter) return activeTransporter;
 
-// Send single email using Zoho Mail API
+  for (const port of smtpPorts) {
+    try {
+      console.log(`Testing Zoho SMTP on port ${port}...`);
+
+      const transporter = nodemailer.createTransport({
+        host: "smtp.zoho.in",
+        port: port,
+        secure: port === 465, // true for 465, false for other ports
+        auth: {
+          user: process.env.ZOHO_USER,
+          pass: process.env.ZOHO_APP_PASSWORD,
+        },
+        tls: {
+          rejectUnauthorized: false,
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
+      });
+
+      // Test the connection
+      await transporter.verify();
+      console.log(`✓ SMTP working on port ${port}`);
+      activeTransporter = transporter;
+      workingPort = port;
+      return transporter;
+    } catch (error) {
+      console.log(`✗ Port ${port} failed: ${error.message}`);
+    }
+  }
+
+  console.error("✗ No working SMTP port found");
+  return null;
+};
+
+// Initialize transporter asynchronously
+let transporter = null;
+let transporterInitialized = false;
+
+const initTransporter = async () => {
+  if (!transporterInitialized) {
+    transporter = await getWorkingTransporter();
+    transporterInitialized = true;
+  }
+  return transporter;
+};
+
+// Call initialization
+initTransporter();
+
+// Send single email using Nodemailer
 export const sendEmail = async (to, subject, html, attachments = []) => {
   try {
     console.log(`Attempting to send email to: ${to}`);
 
-    // Prepare email data for Zoho API
-    const emailData = {
-      fromAddress: process.env.ZOHO_USER,
-      toAddress: to,
+    // Get working transporter
+    const transporterInstance = await initTransporter();
+
+    if (!transporterInstance) {
+      throw new Error("No working SMTP connection available");
+    }
+
+    console.log(`Using SMTP port: ${workingPort}`);
+
+    const mailOptions = {
+      from: `"Looping Mail System" <${process.env.ZOHO_USER}>`,
+      to: to,
       subject: subject,
-      content: html,
-      isHTML: true,
+      html: html,
+      attachments: attachments.map((file) => ({
+        filename: file.originalname,
+        content: file.buffer,
+        contentType: file.mimetype,
+      })),
     };
 
-    // Add attachments if any
-    if (attachments && attachments.length > 0) {
-      emailData.attachments = attachments.map((file) => ({
-        name: file.originalname,
-        content: file.buffer.toString("base64"),
-        mimeType: file.mimetype,
-      }));
-    }
-
-    // Make API request to Zoho
-    const response = await axios.post(
-      `${ZOHO_API_URL}/${ZOHO_ACCOUNT_ID}/messages`,
-      emailData,
-      {
-        headers: {
-          Authorization: `Basic ${authToken}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 30000,
-      },
+    const info = await transporterInstance.sendMail(mailOptions);
+    console.log(
+      `✓ Email sent successfully to ${to}, MessageId: ${info.messageId}`,
     );
-
-    if (response.data && response.data.status === "success") {
-      console.log(`✓ Email sent successfully to ${to}`);
-      return {
-        success: true,
-        messageId: response.data.data.messageId || Date.now().toString(),
-        timestamp: new Date().toISOString(),
-      };
-    } else {
-      throw new Error(
-        "Zoho API returned error: " + JSON.stringify(response.data),
-      );
-    }
+    return {
+      success: true,
+      messageId: info.messageId,
+      timestamp: new Date().toISOString(),
+    };
   } catch (error) {
     console.error(`✗ Email sending error to ${to}:`, error.message);
-    if (error.response) {
-      console.error("API Response:", error.response.data);
-    }
     throw new Error(`Failed to send email: ${error.message}`);
   }
 };
