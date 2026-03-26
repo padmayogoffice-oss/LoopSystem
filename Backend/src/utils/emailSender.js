@@ -12,11 +12,11 @@ console.log(
   process.env.ZOHO_APP_PASSWORD ? "✓ Set" : "✗ Missing",
 );
 
-// Replace the transporter configuration in emailSender.js with:
+// Create transporter with working Zoho SMTP configuration
 const transporter = nodemailer.createTransport({
-  host: "smtp.zoho.com", // Use .com instead of .in
-  port: 587,
-  secure: false,
+  host: "smtp.zoho.in",
+  port: 465,
+  secure: true, // true for 465, false for other ports
   auth: {
     user: process.env.ZOHO_USER,
     pass: process.env.ZOHO_APP_PASSWORD,
@@ -24,45 +24,39 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
-  connectionTimeout: 30000,
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
+  connectionTimeout: 10000, // 10 seconds timeout
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
-// Verify transporter connection
-const verifyTransporter = async () => {
-  try {
-    await transporter.verify();
-    console.log(
-      "\x1b[32m%s\x1b[0m",
-      "✓ Zoho Email server is ready to send messages",
-    );
-    console.log(`✓ Email account: ${process.env.ZOHO_USER}`);
-    return true;
-  } catch (error) {
+// Verify transporter connection (don't await, let it run in background)
+transporter.verify((error, success) => {
+  if (error) {
     console.error(
       "\x1b[31m%s\x1b[0m",
       "✗ Zoho Email transporter error:",
       error.message,
     );
     console.log("\x1b[33m%s\x1b[0m", "Please check:");
-    console.log("  1. ZOHO_USER is correct: info@padmayog.in");
+    console.log("  1. ZOHO_USER is correct:", process.env.ZOHO_USER);
     console.log(
       "  2. ZOHO_APP_PASSWORD is correct (app password, not regular password)",
     );
     console.log("  3. App password is generated from Zoho account settings");
     console.log("  4. IMAP/SMTP access is enabled in Zoho settings");
-    return false;
+    console.log("  5. Check if your IP is allowed in Zoho security settings");
+  } else {
+    console.log(
+      "\x1b[32m%s\x1b[0m",
+      "✓ Zoho Email server is ready to send messages",
+    );
+    console.log(`✓ Email account: ${process.env.ZOHO_USER}`);
   }
-};
-
-// Call verification
-verifyTransporter();
+});
 
 // Send single email
 export const sendEmail = async (to, subject, html, attachments = []) => {
   try {
-    // Log email attempt
     console.log(`Attempting to send email to: ${to}`);
 
     const mailOptions = {
@@ -109,10 +103,10 @@ const convertToMs = (value, unit) => {
   }
 };
 
-// Store active intervals to potentially cancel them
+// Store active intervals
 const activeIntervals = new Map();
 
-// Schedule multiple emails
+// Schedule multiple emails with error handling and retry logic
 export const scheduleEmails = (
   to,
   subject,
@@ -125,9 +119,11 @@ export const scheduleEmails = (
 ) => {
   let sentCount = 0;
   let isCancelled = false;
+  let failedAttempts = 0;
+  const MAX_RETRIES = 3;
 
   // Convert time to milliseconds
-  const timeInMs = convertToMs(timeValue, timeUnit);
+  const timeInMs = Math.max(convertToMs(timeValue, timeUnit), 3000); // Minimum 3 seconds
   const intervalId = Date.now().toString();
 
   const sendNextEmail = async () => {
@@ -142,6 +138,7 @@ export const scheduleEmails = (
     try {
       const result = await sendEmail(to, subject, html, attachments);
       sentCount++;
+      failedAttempts = 0; // Reset failed attempts on success
       console.log(
         `📧 Email ${sentCount}/${count} sent to ${to} at ${new Date().toISOString()}`,
       );
@@ -154,11 +151,27 @@ export const scheduleEmails = (
         }
       }
     } catch (error) {
+      failedAttempts++;
       console.error(`✗ Error sending email ${sentCount + 1}:`, error.message);
-      isCancelled = true;
-      if (activeIntervals.has(intervalId)) {
-        clearInterval(activeIntervals.get(intervalId));
-        activeIntervals.delete(intervalId);
+
+      // Retry logic
+      if (failedAttempts <= MAX_RETRIES) {
+        console.log(`Retrying... Attempt ${failedAttempts}/${MAX_RETRIES}`);
+        // Retry after 5 seconds
+        setTimeout(() => {
+          if (!isCancelled && sentCount < parseInt(count)) {
+            sendNextEmail();
+          }
+        }, 5000);
+      } else {
+        console.error(
+          `✗ Failed to send email after ${MAX_RETRIES} attempts. Stopping.`,
+        );
+        isCancelled = true;
+        if (activeIntervals.has(intervalId)) {
+          clearInterval(activeIntervals.get(intervalId));
+          activeIntervals.delete(intervalId);
+        }
       }
     }
   };
@@ -175,11 +188,12 @@ export const scheduleEmails = (
     intervalId,
     totalEmails: count,
     timeInterval: `${timeValue} ${timeUnit}`,
+    actualDelay: `${timeInMs / 1000} seconds`,
     startTime: new Date().toISOString(),
   };
 };
 
-// Cancel all active email schedules (optional utility)
+// Cancel all active email schedules
 export const cancelAllSchedules = () => {
   for (const [id, interval] of activeIntervals) {
     clearInterval(interval);
