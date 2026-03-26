@@ -20,7 +20,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:5173",
-      "https://sunny-learning-production-9995.up.railway.app",
+      "https://loopsystem.up.railway.app",
       "https://loopsystem-production.up.railway.app",
     ],
     credentials: true,
