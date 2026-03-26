@@ -29,7 +29,6 @@ const testSendGridConnection = async () => {
   }
 
   try {
-    // Send a test email to verify configuration
     await sgMail.send({
       to: FROM_EMAIL,
       from: FROM_EMAIL,
@@ -44,10 +43,6 @@ const testSendGridConnection = async () => {
     if (error.response) {
       console.error("Error details:", error.response.body);
     }
-    console.log("\x1b[33m%s\x1b[0m", "Please check:");
-    console.log("  1. SENDGRID_API_KEY is correct");
-    console.log("  2. FROM_EMAIL is verified in SendGrid");
-    console.log("  3. You have sufficient credits/tier");
     return false;
   }
 };
@@ -55,7 +50,7 @@ const testSendGridConnection = async () => {
 // Call test in background
 testSendGridConnection();
 
-// Send single email using SendGrid
+// Send single email using SendGrid with improved deliverability
 export const sendEmail = async (to, subject, html, attachments = []) => {
   try {
     console.log(`Attempting to send email to: ${to}`);
@@ -67,8 +62,27 @@ export const sendEmail = async (to, subject, html, attachments = []) => {
     const msg = {
       to: to,
       from: FROM_EMAIL,
+      from_name: "Padmayog Agrotech",
+      reply_to: FROM_EMAIL,
       subject: subject,
       html: html,
+      categories: ["Transactional"],
+      // Add IP pool (if you have dedicated IP)
+      // ip_pool_name: "transactional",
+
+      // Tracking settings
+      tracking_settings: {
+        click_tracking: { enable: true, enable_text: true },
+        open_tracking: { enable: true },
+        subscription_tracking: { enable: false },
+      },
+
+      // Custom headers for better deliverability
+      headers: {
+        "X-Mailer": "Padmayog Mail System",
+        "X-Priority": "3",
+        "List-Unsubscribe": `<mailto:${FROM_EMAIL}?subject=unsubscribe>`,
+      },
     };
 
     // Add attachments if any
@@ -135,7 +149,7 @@ export const scheduleEmails = (
   const MAX_RETRIES = 3;
 
   // Convert time to milliseconds
-  const timeInMs = Math.max(convertToMs(timeValue, timeUnit), 3000); // Minimum 3 seconds
+  const timeInMs = Math.max(convertToMs(timeValue, timeUnit), 3000);
   const intervalId = Date.now().toString();
 
   const sendNextEmail = async () => {
@@ -150,7 +164,7 @@ export const scheduleEmails = (
     try {
       const result = await sendEmail(to, subject, html, attachments);
       sentCount++;
-      failedAttempts = 0; // Reset failed attempts on success
+      failedAttempts = 0;
       console.log(
         `📧 Email ${sentCount}/${count} sent to ${to} at ${new Date().toISOString()}`,
       );
@@ -166,10 +180,8 @@ export const scheduleEmails = (
       failedAttempts++;
       console.error(`✗ Error sending email ${sentCount + 1}:`, error.message);
 
-      // Retry logic
       if (failedAttempts <= MAX_RETRIES) {
         console.log(`Retrying... Attempt ${failedAttempts}/${MAX_RETRIES}`);
-        // Retry after 5 seconds
         setTimeout(() => {
           if (!isCancelled && sentCount < parseInt(count)) {
             sendNextEmail();
@@ -188,11 +200,8 @@ export const scheduleEmails = (
     }
   };
 
-  // Start sending emails
   const interval = setInterval(sendNextEmail, timeInMs);
   activeIntervals.set(intervalId, interval);
-
-  // Send first email immediately
   setTimeout(sendNextEmail, 0);
 
   return {
