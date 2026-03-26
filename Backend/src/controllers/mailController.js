@@ -53,9 +53,8 @@ export const sendLoopingMails = async (req, res) => {
       });
     }
 
-    // Get sender email from environment
-    const senderEmail =
-      process.env.ZOHO_USER || process.env.EMAIL_USER || "noreply@loopmail.com";
+    // Get sender email from environment (SendGrid FROM_EMAIL)
+    const senderEmail = process.env.FROM_EMAIL || "noreply@loopmail.com";
     const currentDate = new Date();
     const formattedDate = currentDate.toLocaleString("en-US", {
       weekday: "long",

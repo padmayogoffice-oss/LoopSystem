@@ -1,113 +1,99 @@
-import nodemailer from "nodemailer";
+import sgMail from "@sendgrid/mail";
 import dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
 
+// Get SendGrid configuration from environment
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+const FROM_EMAIL = process.env.FROM_EMAIL;
+
 // Verify environment variables
 console.log("Email Configuration Check:");
-console.log("ZOHO_USER:", process.env.ZOHO_USER ? "✓ Set" : "✗ Missing");
-console.log(
-  "ZOHO_APP_PASSWORD:",
-  process.env.ZOHO_APP_PASSWORD ? "✓ Set" : "✗ Missing",
-);
+console.log("SENDGRID_API_KEY:", SENDGRID_API_KEY ? "✓ Set" : "✗ Missing");
+console.log("FROM_EMAIL:", FROM_EMAIL ? "✓ Set" : "✗ Missing");
 
-// Try multiple ports that might be allowed on cloud platforms
-const smtpPorts = [25, 587, 465, 2525, 8025];
-let activeTransporter = null;
-let workingPort = null;
+// Initialize SendGrid
+if (SENDGRID_API_KEY) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
+}
 
-// Function to test different SMTP ports
-const getWorkingTransporter = async () => {
-  if (activeTransporter) return activeTransporter;
+// Test SendGrid connection
+const testSendGridConnection = async () => {
+  if (!SENDGRID_API_KEY || !FROM_EMAIL) {
+    console.error(
+      "\x1b[31m%s\x1b[0m",
+      "✗ SendGrid not configured. Missing API key or FROM_EMAIL",
+    );
+    return false;
+  }
 
-  for (const port of smtpPorts) {
-    try {
-      console.log(`Testing Zoho SMTP on port ${port}...`);
-
-      const transporter = nodemailer.createTransport({
-        host: "smtp.zoho.in",
-        port: port,
-        secure: port === 465, // true for 465, false for other ports
-        auth: {
-          user: process.env.ZOHO_USER,
-          pass: process.env.ZOHO_APP_PASSWORD,
-        },
-        tls: {
-          rejectUnauthorized: false,
-        },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
-      });
-
-      // Test the connection
-      await transporter.verify();
-      console.log(`✓ SMTP working on port ${port}`);
-      activeTransporter = transporter;
-      workingPort = port;
-      return transporter;
-    } catch (error) {
-      console.log(`✗ Port ${port} failed: ${error.message}`);
+  try {
+    // Send a test email to verify configuration
+    await sgMail.send({
+      to: FROM_EMAIL,
+      from: FROM_EMAIL,
+      subject: "SendGrid Connection Test",
+      text: "SendGrid is working correctly for Looping Mail System!",
+    });
+    console.log("\x1b[32m%s\x1b[0m", "✓ SendGrid is ready to send messages");
+    console.log(`✓ From email: ${FROM_EMAIL}`);
+    return true;
+  } catch (error) {
+    console.error("\x1b[31m%s\x1b[0m", "✗ SendGrid error:", error.message);
+    if (error.response) {
+      console.error("Error details:", error.response.body);
     }
+    console.log("\x1b[33m%s\x1b[0m", "Please check:");
+    console.log("  1. SENDGRID_API_KEY is correct");
+    console.log("  2. FROM_EMAIL is verified in SendGrid");
+    console.log("  3. You have sufficient credits/tier");
+    return false;
   }
-
-  console.error("✗ No working SMTP port found");
-  return null;
 };
 
-// Initialize transporter asynchronously
-let transporter = null;
-let transporterInitialized = false;
+// Call test in background
+testSendGridConnection();
 
-const initTransporter = async () => {
-  if (!transporterInitialized) {
-    transporter = await getWorkingTransporter();
-    transporterInitialized = true;
-  }
-  return transporter;
-};
-
-// Call initialization
-initTransporter();
-
-// Send single email using Nodemailer
+// Send single email using SendGrid
 export const sendEmail = async (to, subject, html, attachments = []) => {
   try {
     console.log(`Attempting to send email to: ${to}`);
 
-    // Get working transporter
-    const transporterInstance = await initTransporter();
-
-    if (!transporterInstance) {
-      throw new Error("No working SMTP connection available");
+    if (!SENDGRID_API_KEY || !FROM_EMAIL) {
+      throw new Error("SendGrid not configured. Missing API key or FROM_EMAIL");
     }
 
-    console.log(`Using SMTP port: ${workingPort}`);
-
-    const mailOptions = {
-      from: `"Looping Mail System" <${process.env.ZOHO_USER}>`,
+    const msg = {
       to: to,
+      from: FROM_EMAIL,
       subject: subject,
       html: html,
-      attachments: attachments.map((file) => ({
-        filename: file.originalname,
-        content: file.buffer,
-        contentType: file.mimetype,
-      })),
     };
 
-    const info = await transporterInstance.sendMail(mailOptions);
-    console.log(
-      `✓ Email sent successfully to ${to}, MessageId: ${info.messageId}`,
-    );
+    // Add attachments if any
+    if (attachments && attachments.length > 0) {
+      msg.attachments = attachments.map((file) => ({
+        content: file.buffer.toString("base64"),
+        filename: file.originalname,
+        type: file.mimetype,
+        disposition: "attachment",
+      }));
+    }
+
+    const response = await sgMail.send(msg);
+    console.log(`✓ Email sent successfully to ${to}`);
     return {
       success: true,
-      messageId: info.messageId,
+      messageId:
+        response[0]?.headers?.["x-message-id"] || Date.now().toString(),
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
     console.error(`✗ Email sending error to ${to}:`, error.message);
+    if (error.response) {
+      console.error("SendGrid Error:", error.response.body);
+    }
     throw new Error(`Failed to send email: ${error.message}`);
   }
 };
