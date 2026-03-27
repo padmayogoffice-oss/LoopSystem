@@ -79,7 +79,7 @@ export const sendLoopingMails = async (req, res) => {
           <!-- Simple, clean header -->
           <div style="border-bottom: 2px solid #4F46E5; padding-bottom: 10px; margin-bottom: 20px;">
             <h2 style="color: #4F46E5; margin: 0;">Padmayog Agrotech</h2>
-            <p style="color: #666; margin: 5px 0 0 0; font-size: 12px;">pune,maharashtra,India</p>
+            <p style="color: #666; margin: 5px 0 0 0; font-size: 12px;">pune,maharashtra</p>
           </div>
           
           <!-- Personal greeting -->
@@ -93,7 +93,7 @@ export const sendLoopingMails = async (req, res) => {
           <!-- Simple signature -->
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
             <p style="margin: 5px 0;">Best regards,</p>
-            <p style="margin: 5px 0; font-weight: bold;">Padmayog Agrotech Team</p>
+            <p style="margin: 5px 0; font-weight: bold;">Dr.Suyog Rasal</p>
            
           </div>
           
